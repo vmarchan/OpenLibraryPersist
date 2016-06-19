@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model name="Test1.xcdatamodel" userDefinedModelVersionIdentifier="" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="11A491" minimumToolsVersion="Automatic" macOSVersion="Automatic" iOSVersion="Automatic">
-    <elements/>
+<model userDefinedModelVersionIdentifier="" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="10174" systemVersion="15F34" minimumToolsVersion="Automatic">
+    <entity name="Author" syncable="YES">
+        <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="petenece" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="tiene" inverseEntity="Book" syncable="YES"/>
+    </entity>
+    <entity name="Book" syncable="YES">
+        <attribute name="cover" optional="YES" attributeType="Binary" syncable="YES"/>
+        <attribute name="error" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="isbn" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="title" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="tiene" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Author" inverseName="petenece" inverseEntity="Author" syncable="YES"/>
+    </entity>
+    <fetchRequest name="petAuthor" entity="Book"/>
+    <fetchRequest name="petBook" entity="Book" predicateString="isbn == $isbn"/>
+    <fetchRequest name="petBooks" entity="Book"/>
+    <elements>
+        <element name="Author" positionX="-54" positionY="9" width="128" height="75"/>
+        <element name="Book" positionX="-63" positionY="-18" width="128" height="120"/>
+    </elements>
 </model>

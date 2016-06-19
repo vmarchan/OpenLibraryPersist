@@ -7,6 +7,7 @@
 //
 
 import UIKit
+//import CoreData
 
 class BookDetailViewController: UIViewController {
 
@@ -17,6 +18,7 @@ class BookDetailViewController: UIViewController {
     @IBOutlet var errorText: UILabel!
     
     var libro: Libro = Libro(isbn: "", titulo: "", autores: [], img_url: UIImage(), error: "")
+//    var contexto : NSManagedObjectContext? = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -26,6 +28,8 @@ class BookDetailViewController: UIViewController {
         self.imgBook.layer.shadowOpacity = 0.5
         self.imgBook.layer.shadowOffset = CGSizeZero
         self.imgBook.layer.shadowRadius = 5
+        
+//        self.contexto = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext
         
     }
 
@@ -41,7 +45,7 @@ class BookDetailViewController: UIViewController {
     
     func showBookInformation() -> Void {
         
-        if libro.error.isEmpty {
+        if !libro.isbn.isEmpty {
             //show all information and hide error
             self.imgBook.hidden = false
             self.bookTitle.hidden = false
@@ -68,7 +72,7 @@ class BookDetailViewController: UIViewController {
             self.isbnCode.hidden = true
             self.errorText.hidden = false
             
-            self.errorText.text = self.libro.error
+            self.errorText.text = "El libro no se ha encontrado. Comprueba que el código ISBN es el correcto."
         }
         
     }
