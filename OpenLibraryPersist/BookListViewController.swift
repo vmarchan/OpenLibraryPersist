@@ -50,6 +50,7 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
         super.viewDidLoad()
         
         self.contexto = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext
+        completeListBooks()
         
         self.addNewBook(addButton)
         self.textField.delegate = self
@@ -63,7 +64,6 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
         self.searchError = false
         self.existsISBN = false
         hideSearch()
-        completeListBooks()
     }
 
     override func didReceiveMemoryWarning() {
@@ -73,32 +73,36 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
     
 
     func completeListBooks() -> Void {
-        //Búsqueda en la base de datos.
-        let bookEntity = NSEntityDescription.entityForName("Book", inManagedObjectContext: self.contexto!)
-        let peticion = bookEntity?.managedObjectModel.fetchRequestTemplateForName("petBooks")
         
+        self.books.removeAll()
+        let libroEntidad = NSEntityDescription.entityForName("Book", inManagedObjectContext: self.contexto!)
+        let peticion = libroEntidad?.managedObjectModel.fetchRequestTemplateForName("petBooks")
         do {
-            let bookEntity = try self.contexto?.executeFetchRequest(peticion!)
-            
-            for book in bookEntity! {
+            let librosEntidad = try self.contexto?.executeFetchRequest(peticion!)
+            for libro in librosEntidad! {
                 var newBook : Libro = Libro(isbn: "", titulo: "", autores: [], img_url: UIImage(), error: "")
-                newBook.titulo = book.valueForKey("title") as! String
-                let authors = book.valueForKey("tiene") as! Set<NSObject>
+                newBook.titulo = libro.valueForKey("title") as! String
+                let authors = libro.valueForKey("tiene") as! Set<NSObject>
                 var aux : [String] = []
                 for author in authors {
                     let name = author.valueForKey("name") as! String
                     aux.append(name)
                 }
                 newBook.autores = aux
-                newBook.isbn = book.valueForKey("isbn") as! String
-                newBook.img_url = UIImage(data: book.valueForKey("cover") as! NSData)!
+                newBook.isbn = libro.valueForKey("isbn") as! String
+                newBook.img_url = UIImage(data: libro.valueForKey("cover") as! NSData)!
                 
                 self.books.append(newBook)
+                self.tableView.reloadData()
             }
-        } catch let error as NSError {
-            print ("Filed to load: \(error)")
+
+        }
+        catch{
             
         }
+
+
+
     }
     
     
@@ -142,26 +146,23 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
             presentViewController(alert, animated:true, completion:nil)
             
         } else {
-            //            self.initStates()
             let isbn = self.textField.text
             let urls = self.baseUrl + isbn!
             let url = NSURL(string: urls)
-            let session = NSURLSession.sharedSession()
-            let bloque = { (datos : NSData?, resp : NSURLResponse?, error : NSError?) -> Void in
+            
+            let datos: NSData? = NSData (contentsOfURL: url!)
+            
+            if datos == nil {
+                //alert
+                let alertError = UIAlertController(title: "Error", message: "No hay datos", preferredStyle: UIAlertControllerStyle.Alert)
                 
-                if (error != nil) {
-                    //alert
-                    let alertError = UIAlertController(title: "Error", message: error?.localizedDescription, preferredStyle: UIAlertControllerStyle.Alert)
-                    
-                    alertError.addAction(UIAlertAction(title: "Ok", style: .Default, handler: { (action: UIAlertAction!) in
-                        print("Handle Ok logic")
-                    }))
-                    self.presentViewController(alertError, animated:true, completion:nil)
-                } else {
+                alertError.addAction(UIAlertAction(title: "Ok", style: .Default, handler: { (action: UIAlertAction!) in
+                    print("Handle Ok logic")
+                }))
+                self.presentViewController(alertError, animated:true, completion:nil)
+            } else {
                     let texto = NSString(data: datos!, encoding: NSUTF8StringEncoding)
-                    dispatch_async(dispatch_get_main_queue(), {
-                        let data = texto?.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)
-                        
+                    let data = texto?.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)
                         do {
                             var libro: Libro
                             libro = Libro(isbn: "", titulo: "", autores: [], img_url: UIImage(), error: "")
@@ -211,7 +212,6 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
                                             //Set authors list if exist
                                             if let cont2 = cont1["authors"] as? NSArray {
                                                 newbookEntity.setValue(self.createAuthorsEntity(cont2 ), forKey: "tiene")
-//                                                newbookEntity.setValue(self.createAuthorsEntity(cont2 as! [String]), forKey: "tiene")
                                             }
                                             
                                             //Set image if exists
@@ -219,21 +219,23 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
                                                 if let largeCover = cont3["large"] as? String {
                                                     if let imgURL = NSURL(string: largeCover) {
                                                         if let data = NSData(contentsOfURL: imgURL) {
-                                                            newbookEntity.setValue(UIImage(data: data)!, forKey: "cover")
+                                                            
+                                                            newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
                                                         }
                                                     }
                                                     
                                                 } else if let mediumCover = cont3["medium"] as? String {
                                                     if let imgURL = NSURL(string: mediumCover) {
                                                         if let data = NSData(contentsOfURL: imgURL) {
-                                                            newbookEntity.setValue(UIImage(data: data)!, forKey: "cover")
+                                                            
+                                                            newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
                                                         }
                                                     }
                                                     
                                                 } else if let smallCover = cont3["small"] as? String {
                                                     if let imgURL = NSURL(string: smallCover) {
                                                         if let data = NSData(contentsOfURL: imgURL) {
-                                                            newbookEntity.setValue(UIImage(data: data)!, forKey: "cover")
+                                                           newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
                                                         }
                                                     }
                                                     
@@ -243,13 +245,29 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
                                             } else {
                                                 newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(named: "no-disponible")!, 1.0)!), forKey: "cover")
                                             }
+                                            
+                                            do{
+                                                try self.contexto?.save()
+                                                let librosEntidad = try self.contexto?.executeFetchRequest(peticion!)
+                                                for libroEntidad2 in librosEntidad! {
+                                                    let isbnTemp = libroEntidad2.valueForKey("isbn") as! String
+                                                    self.isbnIndex.append(isbnTemp)
+                                                    self.completeListBooks()
+                                                    self.tableView.reloadData()
+                                                }
+                                                
+                                            }
+                                            catch {
+                                                print ("Error en guardado")
+                                            }
+
                                         } else {
                                             self.existsISBN = false
                                         }
                                     }
-                                    self.completeListBooks()
+//                                    self.completeListBooks()
                                     self.performSegueWithIdentifier("BookDetailSegue", sender: self)
-                                    self.tableView.reloadData()
+//                                    self.tableView.reloadData()
 
                                 } catch let error as NSError {
                                     print ("Filed to load: \(error)")
@@ -259,12 +277,7 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
                         } catch let error as NSError {
                             print ("Filed to load: \(error)")
                         }
-                    })
-                    
                 }
-            }
-            let dt = session.dataTaskWithURL(url!, completionHandler:bloque)
-            dt.resume()
         }
         
     }

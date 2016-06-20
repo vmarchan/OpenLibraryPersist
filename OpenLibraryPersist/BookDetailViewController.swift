@@ -17,8 +17,8 @@ class BookDetailViewController: UIViewController {
     @IBOutlet var bookAuthor: UILabel!
     @IBOutlet var errorText: UILabel!
     
-    var libro: Libro = Libro(isbn: "", titulo: "", autores: [], img_url: UIImage(), error: "")
-//    var contexto : NSManagedObjectContext? = nil
+    var libro: Libro? //= Libro(isbn: "", titulo: "", autores: [], img_url: UIImage(), error: "")
+    var error : String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,8 +28,6 @@ class BookDetailViewController: UIViewController {
         self.imgBook.layer.shadowOpacity = 0.5
         self.imgBook.layer.shadowOffset = CGSizeZero
         self.imgBook.layer.shadowRadius = 5
-        
-//        self.contexto = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext
         
     }
 
@@ -45,7 +43,7 @@ class BookDetailViewController: UIViewController {
     
     func showBookInformation() -> Void {
         
-        if !libro.isbn.isEmpty {
+        if (self.libro != nil) {
             //show all information and hide error
             self.imgBook.hidden = false
             self.bookTitle.hidden = false
@@ -53,9 +51,9 @@ class BookDetailViewController: UIViewController {
             self.isbnCode.hidden = false
             self.errorText.hidden = true
             
-            self.imgBook.image = libro.img_url
-            self.bookTitle.text = libro.titulo
-            for author in libro.autores{
+            self.imgBook.image = libro!.img_url
+            self.bookTitle.text = libro!.titulo
+            for author in libro!.autores{
                 let name = author
                 if ((self.bookAuthor.text?.isEmpty) != nil) {
                     self.bookAuthor.text = name
@@ -63,7 +61,7 @@ class BookDetailViewController: UIViewController {
                     self.bookAuthor.text = "\(self.bookAuthor.text), \(name)"
                 }
             }
-            self.isbnCode.text = self.libro.isbn
+            self.isbnCode.text = self.libro!.isbn
         } else {
             //hide all information and show error
             self.imgBook.hidden = true
