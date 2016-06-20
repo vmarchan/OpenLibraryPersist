@@ -17,7 +17,7 @@ class BookDetailViewController: UIViewController {
     @IBOutlet var bookAuthor: UILabel!
     @IBOutlet var errorText: UILabel!
     
-    var libro: Libro? //= Libro(isbn: "", titulo: "", autores: [], img_url: UIImage(), error: "")
+    var libro: Libro?
     var error : String?
     
     override func viewDidLoad() {

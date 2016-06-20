@@ -66,17 +66,12 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
         hideSearch()
     }
 
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
-    }
-    
-
     func completeListBooks() -> Void {
         
         self.books.removeAll()
         let libroEntidad = NSEntityDescription.entityForName("Book", inManagedObjectContext: self.contexto!)
         let peticion = libroEntidad?.managedObjectModel.fetchRequestTemplateForName("petBooks")
+        
         do {
             let librosEntidad = try self.contexto?.executeFetchRequest(peticion!)
             for libro in librosEntidad! {
@@ -95,16 +90,11 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
                 self.books.append(newBook)
                 self.tableView.reloadData()
             }
-
         }
         catch{
             
         }
-
-
-
     }
-    
     
     // MARK: - Hide/Show Search
     @IBAction func addNewBook(sender: UIBarButtonItem) {
@@ -130,7 +120,7 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
         self.searchAction(self)
         return false
     }
-
+    
     func searchAction(sender: AnyObject) {
         
         
@@ -161,125 +151,121 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
                 }))
                 self.presentViewController(alertError, animated:true, completion:nil)
             } else {
-                    let texto = NSString(data: datos!, encoding: NSUTF8StringEncoding)
-                    let data = texto?.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)
+                let texto = NSString(data: datos!, encoding: NSUTF8StringEncoding)
+                let data = texto?.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)
+                do {
+                    var libro: Libro
+                    libro = Libro(isbn: "", titulo: "", autores: [], img_url: UIImage(), error: "")
+                    
+                    let json = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.MutableLeaves)
+                    
+                    let cont = json as! NSDictionary
+                    
+                    if let key = self.textField.text {
+                        let bookKey = "ISBN:\(key)"
+                        self.searchCode = bookKey
+                        
+                        //Búsqueda en la base de datos.
+                        let bookEntity = NSEntityDescription.entityForName("Book", inManagedObjectContext: self.contexto!)
+                        let peticion = bookEntity?.managedObjectModel.fetchRequestFromTemplateWithName("petBook", substitutionVariables: ["isbn": bookKey])
+                        
                         do {
-                            var libro: Libro
-                            libro = Libro(isbn: "", titulo: "", autores: [], img_url: UIImage(), error: "")
+                            let bookEntity2 = try self.contexto?.executeFetchRequest(peticion!)
                             
-                            let json = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.MutableLeaves)
-                            
-                            let cont = json as! NSDictionary
-                            
-                            if let key = self.textField.text {
-                                let bookKey = "ISBN:\(key)"
-                                self.searchCode = bookKey
+                            if (bookEntity2?.count > 0) {
+                                self.existsISBN = true
+                                libro.isbn = bookEntity!.valueForKey("isbn") as! String
                                 
-                                //Búsqueda en la base de datos.
-                                let bookEntity = NSEntityDescription.entityForName("Book", inManagedObjectContext: self.contexto!)
-                                let peticion = bookEntity?.managedObjectModel.fetchRequestFromTemplateWithName("petBook", substitutionVariables: ["isbn": bookKey])
-                                
-                                do {
-                                    let bookEntity2 = try self.contexto?.executeFetchRequest(peticion!)
+                                libro.titulo = bookEntity!.valueForKey("title") as! String
+                                let authors = bookEntity!.valueForKey("tiene") as! Set<NSObject>
+                                var aux : [String] = []
+                                for author in authors {
+                                    let name = author.valueForKey("name") as! String
+                                    aux.append(name)
+                                }
+                                libro.autores = aux
+                                libro.img_url = UIImage(data: bookEntity!.valueForKey("cover") as! NSData)!
+                            } else {
+                                //Get context if ISBN code exists
+                                if let cont1 = cont[bookKey] as? NSDictionary {
+                                    self.existsISBN = true
+                                    self.searchedBook = true
+                                    let newbookEntity = NSEntityDescription.insertNewObjectForEntityForName("Book", inManagedObjectContext: self.contexto!)
                                     
-                                    if (bookEntity2?.count > 0) {
-                                        self.existsISBN = true
-                                        libro.isbn = bookEntity!.valueForKey("isbn") as! String
-                                        
-                                        libro.titulo = bookEntity!.valueForKey("title") as! String
-                                        let authors = bookEntity!.valueForKey("tiene") as! Set<NSObject>
-                                        var aux : [String] = []
-                                        for author in authors {
-                                            let name = author.valueForKey("name") as! String
-                                            aux.append(name)
-                                        }
-                                        libro.autores = aux
-                                        libro.img_url = UIImage(data: bookEntity!.valueForKey("cover") as! NSData)!
-                                    } else {
-                                        //Get context if ISBN code exists
-                                        if let cont1 = cont[bookKey] as? NSDictionary {
-                                            self.existsISBN = true
-                                            self.searchedBook = true
-                                            let newbookEntity = NSEntityDescription.insertNewObjectForEntityForName("Book", inManagedObjectContext: self.contexto!)
-                                            
-                                            newbookEntity.setValue(bookKey, forKey: "isbn")
-                                        
-                                            //Set title if exists
-                                            if let title : String = cont1["title"] as? String {
-                                                newbookEntity.setValue(title, forKey: "title")
-                                            }
-                                            
-                                            //Set authors list if exist
-                                            if let cont2 = cont1["authors"] as? NSArray {
-                                                newbookEntity.setValue(self.createAuthorsEntity(cont2 ), forKey: "tiene")
-                                            }
-                                            
-                                            //Set image if exists
-                                            if let cont3 = cont1["cover"] as? NSDictionary {
-                                                if let largeCover = cont3["large"] as? String {
-                                                    if let imgURL = NSURL(string: largeCover) {
-                                                        if let data = NSData(contentsOfURL: imgURL) {
-                                                            
-                                                            newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
-                                                        }
-                                                    }
-                                                    
-                                                } else if let mediumCover = cont3["medium"] as? String {
-                                                    if let imgURL = NSURL(string: mediumCover) {
-                                                        if let data = NSData(contentsOfURL: imgURL) {
-                                                            
-                                                            newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
-                                                        }
-                                                    }
-                                                    
-                                                } else if let smallCover = cont3["small"] as? String {
-                                                    if let imgURL = NSURL(string: smallCover) {
-                                                        if let data = NSData(contentsOfURL: imgURL) {
-                                                           newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
-                                                        }
-                                                    }
-                                                    
-                                                } else {
-                                                    newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(named: "no-disponible")!, 1.0)!), forKey: "cover")
-                                                }
-                                            } else {
-                                                newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(named: "no-disponible")!, 1.0)!), forKey: "cover")
-                                            }
-                                            
-                                            do{
-                                                try self.contexto?.save()
-                                                let librosEntidad = try self.contexto?.executeFetchRequest(peticion!)
-                                                for libroEntidad2 in librosEntidad! {
-                                                    let isbnTemp = libroEntidad2.valueForKey("isbn") as! String
-                                                    self.isbnIndex.append(isbnTemp)
-                                                    self.completeListBooks()
-                                                    self.tableView.reloadData()
-                                                }
-                                                
-                                            }
-                                            catch {
-                                                print ("Error en guardado")
-                                            }
-
-                                        } else {
-                                            self.existsISBN = false
-                                        }
+                                    newbookEntity.setValue(bookKey, forKey: "isbn")
+                                    
+                                    //Set title if exists
+                                    if let title : String = cont1["title"] as? String {
+                                        newbookEntity.setValue(title, forKey: "title")
                                     }
-//                                    self.completeListBooks()
-                                    self.performSegueWithIdentifier("BookDetailSegue", sender: self)
-//                                    self.tableView.reloadData()
-
-                                } catch let error as NSError {
-                                    print ("Filed to load: \(error)")
+                                    
+                                    //Set authors list if exist
+                                    if let cont2 = cont1["authors"] as? NSArray {
+                                        newbookEntity.setValue(self.createAuthorsEntity(cont2 ), forKey: "tiene")
+                                    }
+                                    
+                                    //Set image if exists
+                                    if let cont3 = cont1["cover"] as? NSDictionary {
+                                        if let largeCover = cont3["large"] as? String {
+                                            if let imgURL = NSURL(string: largeCover) {
+                                                if let data = NSData(contentsOfURL: imgURL) {
+                                                    
+                                                    newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
+                                                }
+                                            }
+                                            
+                                        } else if let mediumCover = cont3["medium"] as? String {
+                                            if let imgURL = NSURL(string: mediumCover) {
+                                                if let data = NSData(contentsOfURL: imgURL) {
+                                                    
+                                                    newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
+                                                }
+                                            }
+                                            
+                                        } else if let smallCover = cont3["small"] as? String {
+                                            if let imgURL = NSURL(string: smallCover) {
+                                                if let data = NSData(contentsOfURL: imgURL) {
+                                                    newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(data: data)!, 1.0)!), forKey: "cover")
+                                                }
+                                            }
+                                            
+                                        } else {
+                                            newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(named: "no-disponible")!, 1.0)!), forKey: "cover")
+                                        }
+                                    } else {
+                                        newbookEntity.setValue(NSData(data:UIImageJPEGRepresentation(UIImage(named: "no-disponible")!, 1.0)!), forKey: "cover")
+                                    }
+                                    
+                                    do{
+                                        try self.contexto?.save()
+                                        let librosEntidad = try self.contexto?.executeFetchRequest(peticion!)
+                                        for libroEntidad2 in librosEntidad! {
+                                            let isbnTemp = libroEntidad2.valueForKey("isbn") as! String
+                                            self.isbnIndex.append(isbnTemp)
+                                            self.completeListBooks()
+                                            self.tableView.reloadData()
+                                        }
+                                        
+                                    }
+                                    catch {
+                                        print ("Error en guardado")
+                                    }
+                                    
+                                } else {
+                                    self.existsISBN = false
                                 }
                             }
+                            self.performSegueWithIdentifier("BookDetailSegue", sender: self)
                             
                         } catch let error as NSError {
                             print ("Filed to load: \(error)")
                         }
+                    }
+                } catch let error as NSError {
+                    print ("Filed to load: \(error)")
                 }
+            }
         }
-        
     }
 
     
@@ -332,7 +318,6 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
         if segue.identifier == "BookDetailSegue" {
             let bookDetailView = segue.destinationViewController as! BookDetailViewController
             
-            
             if self.searchedBook {
                 for book in self.books {
                     if (book.isbn.rangeOfString(self.textField.text!) != nil){
@@ -350,6 +335,4 @@ class BookListViewController: UIViewController, UITableViewDelegate, UITableView
         self.hideSearch()
 
     }
-    
-
 }
